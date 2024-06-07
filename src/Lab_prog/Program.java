@@ -1,122 +1,81 @@
 package Lab_prog;
 
-import java.util.Arrays;
+import java.util.Scanner;
+import java.util.zip.CRC32;
 
 public class Program {
+	static Scanner sc = new Scanner(System.in);
 
-	// Java code to implement the approach
-
-	// Returns XOR of 'a' and 'b'
-	// (both of same length)
-	static String Xor(String a, String b) {
-
-		// Initialize result
-		String result = "";
-		int n = b.length();
-
-		// Traverse all bits, if bits are
-		// same, then XOR is 0, else 1
-		for (int i = 1; i < n; i++) {
-			if (a.charAt(i) == b.charAt(i))
-				result += "0";
-			else
-				result += "1";
-		}
-		return result;
-	}
-
-	// Performs Modulo-2 division
-	static String Mod2Div(String dividend, String divisor) {
-
-		// Number of bits to be XORed at a time.
-		int pick = divisor.length();
-
-		// Slicing the dividend to appropriate
-		// length for particular step
-		String tmp = dividend.substring(0, pick);
-
-		int n = dividend.length();
-
-		while (pick < n) {
-			if (tmp.charAt(0) == '1')
-
-				// Replace the dividend by the result
-				// of XOR and pull 1 bit down
-				tmp = Xor(divisor, tmp) + dividend.charAt(pick);
-			else
-
-				// If leftmost bit is '0'.
-				// If the leftmost bit of the dividend (or
-				// the part used in each step) is 0, the
-				// step cannot use the regular divisor; we
-				// need to use an all-0s divisor.
-				tmp = Xor(new String(new char[pick]).replace("\0", "0"), tmp) + dividend.charAt(pick);
-
-			// Increment pick to move further
-			pick += 1;
-		}
-
-		// For the last n bits, we have to carry it out
-		// normally as increased value of pick will cause
-		// Index Out of Bounds.
-		if (tmp.charAt(0) == '1')
-			tmp = Xor(divisor, tmp);
-		else
-			tmp = Xor(new String(new char[pick]).replace("\0", "0"), tmp);
-
-		return tmp;
-	}
-
-	// Function used at the sender side to encode
-	// data by appending remainder of modular division
-	// at the end of data.
-	static void EncodeData(String data, String key) {
-		int l_key = key.length();
-
-		// Appends n-1 zeroes at end of data
-		String appended_data = (data + new String(new char[l_key - 1]).replace("\0", "0"));
-
-		String remainder = Mod2Div(appended_data, key);
-
-		// Append remainder in the original data
-		String codeword = data + remainder;
-		System.out.println("Remainder : " + remainder);
-		System.out.println("Encoded Data (Data + Remainder) :" + codeword + "\n");
-	}
-
-	// checking if the message received by receiver is
-	// correct or not. If the remainder is all 0 then it is
-	// correct, else wrong.
-	static void Receiver(String data, String key) {
-		String currxor = Mod2Div(data.substring(0, key.length()), key);
-		int curr = key.length();
-		while (curr != data.length()) {
-			if (currxor.length() != key.length()) {
-				currxor += data.charAt(curr++);
-			} else {
-				currxor = Mod2Div(currxor, key);
-			}
-		}
-		if (currxor.length() == key.length()) {
-			currxor = Mod2Div(currxor, key);
-		}
-		if (currxor.contains("1")) {
-			System.out.println("there is some error in data");
-		} else {
-			System.out.println("correct message received");
-		}
-	}
-
-	// Driver code
 	public static void main(String[] args) {
-		String data = "100100";
-		String key = "1101";
-		System.out.println("\nSender side...");
-		EncodeData(data, key);
+		String input_bit = "10111001"; // input dividend   // 2973057520
+		String key = "1101"; // input key
 
-		System.out.println("Receiver side...");
-		Receiver(data + Mod2Div(data + new String(new char[key.length() - 1]).replace("\0", "0"), key), key);
+		String input_copy = input_bit;
+
+		for (int i = 0; i < key.length() - 1; i++) {
+			input_bit += '0';
+		}
+
+		CRC32 crc = new CRC32();
+		crc.update(input_bit.getBytes());
+		long crcValue = crc.getValue();
+
+		System.out.println("CRC32 Value: " + crcValue);
+
+		String crcBinary = Long.toBinaryString(crcValue);
+		while (crcBinary.length() < key.length() - 1) {
+			crcBinary = "0" + crcBinary;
+		}
+
+		System.out.println("\n\nDivisor : " + input_bit + " , divident : " + key);
+		System.out.println("\nSender Side ......");
+
+		String remainder = crcBinary.substring(crcBinary.length() - (key.length() - 1));
+
+		System.out.println("\nRemainder: " + remainder);
+
+		String final_result = recieverSide(key, input_copy, remainder); // perform the receiver side
+
+		// checks for errors
+		if (final_result.contains("1")) {
+			System.out.println("The remainder doesn't contain all zeros, hence errors");
+		} else {
+			System.out.println("Correct message received. The remainder contains all zeros, hence no errors");
+		}
+	}
+
+	public static String recieverSide(String key, String divident, String senderKey) {
+
+		for (int i = 0; i < senderKey.length(); i++) {
+			divident += senderKey.charAt(i);
+		}
+
+		System.out.println("Encoded Data (Data + Remainder) : " + divident);
+
+		int divisor_Len = key.length();
+		String divisor = key;
+
+		String temp = divident.substring(0, divisor_Len);
+
+		System.out.println("\n\nDivisor : " + divisor + " , divident : " + divident);
+		System.out.println("\nReceiver Side ......");
+		System.out.print("\nPlease enter the correct dividend : ");
+
+		String input = sc.nextLine();
+		divident = input;
+
+		CRC32 crc = new CRC32();
+		crc.update(divident.getBytes());
+		long crcValue = crc.getValue();
+
+		String crcBinary = Long.toBinaryString(crcValue);
+		while (crcBinary.length() < key.length() - 1) {
+			crcBinary = "0" + crcBinary;
+		}
+
+		String remainder = crcBinary.substring(crcBinary.length() - (key.length() - 1));
+
+		System.out.println("Remainder : " + remainder);
+		return remainder;
 	}
 }
-
-// This code is contributed by phasing17
